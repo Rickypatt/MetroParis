@@ -2,6 +2,7 @@ from datetime import datetime
 
 from database.DAO import DAO
 import networkx as nx
+import geopy.distance
 
 class Model:
     def __init__(self):
@@ -10,6 +11,10 @@ class Model:
         self._idMapFermate = {}
         for f in self._fermate:
             self._idMapFermate[f.id_fermata] = f
+
+    def getShortestPath(self,u,v):
+        return nx.single_source_dijkstra(self._grafo, u, v)
+
 
     def getBFSNodesFromTree(self,source):
         tree = nx.bfs_tree(self._grafo, source)
@@ -120,6 +125,18 @@ class Model:
             v = self._idMapFermate[edge.id_stazA]
             self._grafo.add_edge(u, v)
 
+    def addEdgesPesatiTempi(self):
+        '''
+        Aggiunge archi con peso uguale al tempo di percorrenza dell'arco
+        '''
+        self._grafo.clear_edges()
+        allEdges = DAO.getAllEdgesVel()
+        for e in allEdges:
+            u = self._idMapFermate[e[0]]
+            v = self._idMapFermate[e[1]]
+            peso = getTraversalTime(u,v,e[2])
+            self._grafo.add_edge(u,v, weight = peso)
+
     def getNumNodi(self):
         return len(self._grafo.nodes)
 
@@ -129,3 +146,9 @@ class Model:
     @property
     def fermate(self):
         return self._fermate
+
+
+def getTraversalTime(u,v,vel):
+    dist = geopy.distance.distance((u.coordX,u.coordY),(v.coordX,v.coordY)).km
+    time = dist/vel * 60 #in minuti
+    return time
